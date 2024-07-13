@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hotel AI</title>
+    <link rel="Icon" href="images/title_icon.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+</head>
+<body class="h-screen">
+    <section class="flex flex-col justify-between w-full max-w-full h-[calc(100vh-12px)] border-2 border-gray-300 bg-black">
+        <header class="flex justify-between p-2 border-b-2 bg-white text-gray-600 h-16">
+            <div class="flex items-center">
+                <i class="fas fa-comment-alt"></i>
+                <span class="ml-2 rounded-3xl "><img class="w-9" src="./images/chat_logo.png" alt=""> <div class="bg-green-500 w-2.5 h-2.5 rounded-full ml-6"></div></span>
+            </div>
+            <div class="flex items-center">
+                <button id="volumeToggle" class="ml-2 p-2 text-white rounded  ">
+                    <img id="volumeIcon" class="w-9" src="images/volume.png" alt="Volume Icon">
+                </button>
+            </div>
+        </header>
+
+        <!-- Main chat area -->
+        <main class="flex-1 overflow-y-auto p-2 bg-center bg-cover" id="msger-chat">
+            <!-- Initial chat message -->
+            <div class="max-w-lg mx-auto p-2 text-black bg-white rounded-3xl mb-2">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="font-bold mr-2">BOT</span>
+                    <div id="datetime" class="font-bold"></div>
+                </div>
+                <div>Welcome to Rambihari Palace. How may I assist you today? 😄...</div>
+            </div>
+        </main>
+
+        <!-- Date form container -->
+        <div id="dateFormContainer" class="hidden p-4 text-white bg-gray-100 max-w-5xl container mx-auto  mb-4">
+            <form id="dateForm">
+                <div class="mb-4">
+                    <label for="checkin_date" class="block text-sm font-medium text-gray-700">Check-in Date</label>
+                    <input type="date" id="checkin_date" name="checkin_date" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-gray-700" placeholder="DD-MM-YYYY" required>
+                </div>
+                <div class="mb-4">
+                    <label for="checkout_date" class="block text-sm font-medium text-gray-700">Check-out Date</label>
+                    <input type="date" id="checkout_date" name="checkout_date" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-gray-700" placeholder="DD-MM-YYYY" required>
+                </div>
+                <button type="submit" class="p-2 bg-green-600 text-white font-bold rounded-md transition duration-200 hover:bg-green-500">Send</button>
+            </form>
+        </div>
+        
+
+        <!-- Button container -->
+        <div class="grid lg:grid-cols-4 md:grid-cols-2 sm:grid-cols-2 max-sm:grid-cols-2 justify-center gap-5 py-4 px-4 border-t-2 border-gray-300 bg-gray-200" id="button-container">
+            <a href="#" class="text-center px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:ring focus:border-blue-300" onclick="toggleForm('dateFormContainer')">Check Availability</a>
+            <a href="#" class="text-center px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:ring focus:border-blue-300">Room Booking</a>
+            <a href="#" class="text-center px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:ring focus:border-blue-300">Enquire Event</a>
+            <a href="#" class="text-center px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:ring focus:border-blue-300">Visit Property</a>
+        </div>
+
+        <!-- Text input form -->
+        <form class="flex p-2 border-t-2 border-gray-300 bg-gray-200" id="msger-inputarea">
+            <input type="text" class="flex-1 p-2 bg-gray-300 rounded-md" placeholder="Enter your message..." id="msger-input" >
+            <button type="submit" class="ml-2 p-2 bg-green-600 text-white font-bold rounded-md transition duration-200 hover:bg-green-500">Send</button>
+        </form>
+    </section>
+
+    <audio id="botVoice" style="display: none;"></audio>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            const $chat = $('#msger-chat');
+            const $input = $('#msger-input');
+            const $dateFormContainer = $('#dateFormContainer');
+            const $dateForm = $('#dateForm');
+            let formattedCheckinDate = '';
+            let formattedCheckoutDate = '';
+            let isVoiceEnabled = true;
+            let femaleVoice = null;
+    
+            function loadFemaleVoice() {
+                const voices = window.speechSynthesis.getVoices();
+                femaleVoice = voices.find(voice => voice.name.toLowerCase().includes('female') || voice.name.toLowerCase().includes('woman') || voice.voiceURI.toLowerCase().includes('female') || voice.voiceURI.toLowerCase().includes('woman'));
+    
+                if (!femaleVoice) {
+                    femaleVoice = voices.find(voice => voice.lang === 'en-US'); // Fallback to any English voice
+                }
+            }
+    
+            window.speechSynthesis.onvoiceschanged = loadFemaleVoice;
+            loadFemaleVoice();
+    
+            function speakMessage(text) {
+                const speech = new SpeechSynthesisUtterance();
+                speech.text = text;
+                speech.volume = 1;
+                speech.rate = 1;
+                speech.pitch = 1;
+                speech.lang = 'en-US';
+    
+                if (femaleVoice) {
+                    speech.voice = femaleVoice;
+                }
+    
+                window.speechSynthesis.cancel(); 
+                window.speechSynthesis.speak(speech);
+            }
+    
+            function appendMessage(name, img, side, text) {
+                const msgHTML =
+                    `<div class="flex ${side === 'right' ? 'flex-row-reverse' : ''} items-end mb-2">
+                        <div class="w-12 h-12 ${side === 'right' ? 'ml-2' : 'mr-2'} rounded-full overflow-hidden">
+                            <img src="images/chatbot.jpg" alt="Avatar" class="w-full h-full object-cover">
+                        </div>
+                        <div class="max-w-lg p-4 ${side === 'right' ? 'bg-gray-200 text-' : 'bg-gray-200'} rounded-3xl ${side === 'right' ? 'rounded-br-none' : 'rounded-bl-none'}">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="font-bold mr-2">${name}</span>
+                                <span class="text-sm ${side === 'right' ? 'text-white' : 'text-gray-600'}">${new Date().toLocaleTimeString()}</span>
+                            </div>
+                            <div>${text}</div>
+                        </div>
+                    </div>`;
+                $chat.append(msgHTML);
+                $chat.scrollTop($chat[0].scrollHeight);
+    
+                if (name === 'BOT' && isVoiceEnabled && side === 'left') {
+                    speakMessage(text);
+                }
+            }
+    
+            $dateForm.submit(function(event) {
+                event.preventDefault();
+                const checkinDate = $('#checkin_date').val();
+                const checkoutDate = $('#checkout_date').val();
+    
+                if (!checkinDate || !checkoutDate) {
+                    alert('Please select both check-in and check-out dates.');
+                    return;
+                }
+    
+                formattedCheckinDate = formatDate(checkinDate);
+                formattedCheckoutDate = formatDate(checkoutDate);
+    
+                const message = `${formattedCheckinDate}, ${formattedCheckoutDate} rooms available`;
+                appendMessage('Guest', 'images/chatbot.jpg', 'right', message);
+    
+                // Send API request to backend
+                $.ajax({
+                    type: 'POST',
+                    url: 'http://localhost:8005/chat',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ message }),
+                    success: function(response) {
+                        const { message: botMessage } = response;
+                        appendMessage('BOT', '', 'left', botMessage);
+                    },
+                    error: function() {
+                        appendMessage('BOT', '', 'left', 'Sorry, something went wrong. Please try again later.');
+                    }
+                });
+    
+                $('#checkin_date').val('');
+                $('#checkout_date').val('');
+                toggleForm('dateFormContainer');
+            });
+    
+            $('#msger-inputarea').submit(function(event) {
+                event.preventDefault();
+                const message = $input.val().trim(); // Trim whitespace from input
+    
+                if (message === '') {
+                    alert('Please enter a message.');
+                    return;
+                }
+    
+                if (message.includes("availability") || message.includes("booking") || message.includes("date") || message.includes("available") || message.toLowerCase().includes("ready to use rooms")) {
+                    toggleForm('dateFormContainer');
+                } else {
+                    appendMessage('Guest', 'images/chatbot.jpg', 'right', message);
+    
+                    $.ajax({
+                        type: 'POST',
+                        url: 'http://localhost:8005/chat',
+                        contentType: 'application/json',
+                        data: JSON.stringify({ message }),
+                        success: function(response) {
+                            const { message: botMessage } = response;
+                            appendMessage('BOT', '', 'left', botMessage);
+                        },
+                        error: function() {
+                            appendMessage('BOT', '', 'left', 'Sorry, something went wrong. Please try again later.');
+                        }
+                    });
+                }
+    
+                $input.val('');
+            });
+    
+            function formatDate(dateString) {
+                const [day, month, year] = dateString.split('-');
+                return `${year}-${month}-${day}`;
+            }
+    
+            function toggleForm(formId) {
+                $(`#${formId}`).toggleClass('hidden');
+            }
+    
+            $('#volumeToggle').click(function() {
+                isVoiceEnabled = !isVoiceEnabled; 
+                const iconSrc = isVoiceEnabled ? 'images/volume.png' : 'images/mute.png';
+                $('#volumeIcon').attr('src', iconSrc); 
+            });
+    
+            setInterval(() => {
+                let currentTime = new Date();
+                let formattedTime = currentTime.toLocaleTimeString();
+                let formattedDate = currentTime.toLocaleDateString();
+                $('#datetime').html(`Current Date: ${formattedDate}, Current Time: ${formattedTime}`);
+            }, 1000);
+        });
+    </script>
+    
+</body>
+</html>
+
+
+<!-- for old date not working -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var today = new Date();
+        var dd = String(today.getDate()).padStart(2, '0');
+        var mm = String(today.getMonth() + 1).padStart(2, '0'); 
+        var yyyy = today.getFullYear();
+
+        today = yyyy + '-' + mm + '-' + dd;
+
+        document.getElementById('checkin_date').setAttribute('min', today);
+        document.getElementById('checkout_date').setAttribute('min', today);
+    });
+</script>
